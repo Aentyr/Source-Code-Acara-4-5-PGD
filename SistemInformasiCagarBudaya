@@ -1,0 +1,675 @@
+Imports DotSpatial.Controls
+Imports DotSpatial.Data
+Imports DotSpatial.Symbology
+Imports DotSpatial.Topology
+Imports bruTile
+Imports DotSpatial.Plugins.Webmap
+
+Public Class Form1
+
+    Public AppPath As String = Application.ExecutablePath
+    Public ResourcesPath As String = AppPath.ToUpper.Replace("\PGD4-5.EXE", "\Resources")
+    Public lyrCagarBudaya As MapPointLayer
+    Public lyrJalan As MapLineLayer
+    Public lyrAdministrasi As MapPolygonLayer
+    Public iselect(,) As String
+    Public iselectnumd As Integer = 0
+    Public totalselected As Integer
+    Public selectnext As String = "salah"
+    Public fullextentclick As String = "salah"
+    Public sedangload As Boolean = False
+    Public pointLayerTemplate As MapPointLayer
+    Public pointFeatureTemplate As New FeatureSet(FeatureType.Point)
+    Private lyrFasilitas As Object
+    Private lyrAdmin As Object
+    Public Property KryptonRibbonGroupComboBoxQueryJalan As Object
+    Public Property KryptonRibbonGroupComboBoxQueryFasilitas As Object
+    Public Property FormPopUp As Object
+    Public Property Map2 As Object
+
+    Private Sub Form1_Load(sender As Object, e As EventArgs) Handles MyBase.Load
+
+        sedangload = True
+
+        'ADD Layer BATAS ADMIN
+        lyrAdministrasi = Map1.Layers.Add("D:\File TUGAS\Semester 2\Prak. PGD\Acara 4\Resource\Database\Spatial\Data vektor\ADMINISTRASIDESA_AR_25K.shp")
+        lyrAdministrasi.LegendText = "Batas Administrasi Wilayah"
+        lyrAdministrasi.FeatureSet.AddFid()
+        lyrAdministrasi.FeatureSet.Save()
+        lyrAdministrasi.SelectionEnabled = False
+
+        'Dim symbolAdmin As New PolygonSymbolizer(Color.FromArgb(255, Color.White), Color.Transparant, o.5)
+        'lyrAdmin.Symbolizer = symbolAdmin
+
+        Dim schemeAdmin As New PolygonScheme
+        schemeAdmin.EditorSettings.ClassificationType = ClassificationType.UniqueValues
+        schemeAdmin.EditorSettings.UseGradient = False
+        schemeAdmin.EditorSettings.FieldName = "WADMKC"
+        schemeAdmin.CreateCategories(lyrAdministrasi.DataSet.DataTable)
+
+        For Each ifc As IFeatureCategory In schemeAdmin.GetCategories
+            ifc.SetColor(Color.FromArgb(255, ifc.GetColor))
+        Next
+
+        lyrAdministrasi.Symbology = schemeAdmin
+
+        'ADD LAYER JARINGAN JALAN
+        lyrJalan = Map1.Layers.Add("D:\File TUGAS\Semester 2\Prak. PGD\Acara 4\Resource\Database\Spatial\Data vektor\JALAN_LN_25K.shp")
+        lyrJalan.LegendText = "Jaringan Jalan"
+        lyrJalan.FeatureSet.AddFid()
+        lyrJalan.FeatureSet.Save()
+        lyrJalan.SelectionEnabled = False
+
+        Dim schemeJalan As New LineScheme
+        schemeJalan.ClearCategories()
+
+        Dim symbolizerJalanKolektor As New LineSymbolizer(Color.FromArgb(255, 127, 0), Color.Gray, 3,
+                                                             Drawing2D.DashStyle.Solid,
+        Drawing2D.LineCap.Flat)
+        symbolizerJalanKolektor.ScaleMode = ScaleMode.Simple
+        Dim categoryJalanKolektor As New LineCategory(symbolizerJalanKolektor)
+        categoryJalanKolektor.FilterExpression = "[REMARK] = 'Jalan Kolektor'"
+        categoryJalanKolektor.LegendText = "Jalan Kolektor"
+        schemeJalan.AddCategory(categoryJalanKolektor)
+
+        Dim symbolizerJalanLokal As New LineSymbolizer(Color.FromArgb(178, 178, 255), Color.Gray, 2,
+                                                        Drawing2D.DashStyle.Solid, Drawing2D.LineCap.Flat)
+        symbolizerJalanLokal.ScaleMode = ScaleMode.Simple
+        Dim categoryJalanLokal As New LineCategory(symbolizerJalanLokal)
+        categoryJalanLokal.FilterExpression = "[REMARK] = 'Jalan Lokal'"
+        categoryJalanLokal.LegendText = "Jalan Lokal"
+        schemeJalan.AddCategory(categoryJalanLokal)
+
+        Dim symbolizerJalanLain As New LineSymbolizer(Color.FromArgb(232, 190, 255), Color.Gray, 1.5,
+                                                        Drawing2D.DashStyle.Solid, Drawing2D.LineCap.Flat)
+        symbolizerJalanLain.ScaleMode = ScaleMode.Simple
+        Dim categoryJalanLain As New LineCategory(symbolizerJalanLain)
+        categoryJalanLain.FilterExpression = "[REMARK] = 'Jalan Lain'"
+        categoryJalanLain.LegendText = "Jalan Lain"
+        schemeJalan.AddCategory(categoryJalanLain)
+
+        Dim symbolizerJalanSetapak As New LineSymbolizer(Color.FromArgb(232, 190, 255), Color.Gray, 1.5,
+                                                          Drawing2D.DashStyle.Solid, Drawing2D.LineCap.Flat)
+        symbolizerJalanSetapak.ScaleMode = ScaleMode.Simple
+        Dim categoryJalanSetapak As New LineCategory(symbolizerJalanSetapak)
+        categoryJalanSetapak.FilterExpression = "[REMARK] = 'Jalan Setapak'"
+        categoryJalanSetapak.LegendText = "Jalan Setapak"
+        schemeJalan.AddCategory(categoryJalanSetapak)
+
+        For Each ifc As IFeatureCategory In schemeJalan.GetCategories
+            ifc.SetColor(Color.FromArgb(255, ifc.GetColor))
+        Next
+
+        lyrJalan.Symbology = schemeJalan
+
+        'ADD LAYER TTIK CAGAR BUDAYA
+        lyrCagarBudaya = Map1.Layers.Add("D:\File TUGAS\Semester 2\Prak. PGD\Acara 4\Resource\Database\Spatial\Data vektor\CAGARBUDAYA_PT_25K.shp")
+        lyrCagarBudaya.LegendText = "Titik Cagar Budaya"
+        lyrCagarBudaya.FeatureSet.AddFid()
+        lyrCagarBudaya.FeatureSet.Save()
+
+        Dim schemeCagarBudaya As New PointScheme
+        schemeCagarBudaya.ClearCategories()
+
+        lyrCagarBudaya.Symbology = schemeCagarBudaya
+
+        'ADD LAYER TEMPLATE
+        pointLayerTemplate = Map1.Layers.Add(pointFeatureTemplate)
+        Dim pointttsymbol As New PointSymbolizer(Color.FromArgb(175, 75, 230, 0),
+                                                    DotSpatial.Symbology.PointShape.Star, 12)
+        pointLayerTemplate.Symbolizer = pointttsymbol
+        pointLayerTemplate.LegendText = "point template"
+        pointLayerTemplate.LegendItemVisible = False
+
+        'LOAD ATTRIBUTE
+        Dim dt As DataTable
+        dt = lyrCagarBudaya.DataSet.DataTable
+        DataGridView1.DataSource = dt
+
+
+        'LOAD DATA QUERY
+        lyrAdministrasi.SelectAll()
+
+        Dim ls1 As List(Of IFeature) = New List(Of IFeature)
+        Dim il1 As ISelection = lyrAdministrasi.Selection
+
+        ls1 = il1.ToFeatureList
+
+        KryptonRibbonGroupComboBoxQueryKecamatan.Items.Clear()
+        Dim i As Integer = 0
+        Do While (i < il1.Count)
+            Dim Name As String = (ls1(i).DataRow.ItemArray.GetValue(5).ToString)
+            KryptonRibbonGroupComboBoxQueryKecamatan.Items.Insert(i, Name)
+            i = (i + 1)
+        Loop
+
+        KryptonRibbonGroupComboBoxQueryKecamatan.Sorted = True
+        Dim cboNumber As Integer = KryptonRibbonGroupComboBoxQueryKecamatan.Items.Count - 1
+
+        Try
+            For j = 1 To cboNumber
+                If j > (KryptonRibbonGroupComboBoxQueryKecamatan.Items.Count - 1) Then Exit For
+                If KryptonRibbonGroupComboBoxQueryKecamatan.Items(j) = KryptonRibbonGroupComboBoxQueryKecamatan.Items(j - 1) Then
+                    KryptonRibbonGroupComboBoxQueryKecamatan.Items.RemoveAt(j)
+                    j = j - 1
+                    cboNumber = cboNumber - 1
+                End If
+            Next
+        Catch ex As Exception
+
+        End Try
+
+        KryptonRibbonGroupComboBoxQueryKecamatan.Sorted = True
+
+        lyrAdministrasi.UnSelectAll()
+
+
+        sedangload = False
+
+
+    End Sub
+
+    Friend Shared Function lyrIndustri() As Object
+        Throw New NotImplementedException()
+    End Function
+
+    Friend Shared Function ResourcePath() As String
+        Throw New NotImplementedException()
+    End Function
+
+    Friend Shared Function lyrAset() As Object
+        Throw New NotImplementedException()
+    End Function
+
+    Private Function categoryKantordisdikbud() As ICategory
+        Throw New NotImplementedException()
+    End Function
+
+    Private Sub Map1_MouseMove(sender As Object, e As MouseEventArgs) Handles Map1.MouseMove
+        Try
+            Dim coord As Coordinate = Map1.PixelToProj(e.Location)
+            lblXY.Text = String.Format("X: {0} Y: {1}", coord.X, coord.Y)
+        Catch ex As Exception
+            MsgBox("Mohon Maaf, Terjadi Kesalahan. " & ex.ToString & ". Error Number (" & Err.Number & ")
+            : " & vbCrLf & Err.Description, MsgBoxStyle.Critical, "SIM Jaringan Utilitas Kota Tarakan")
+        End Try
+    End Sub
+
+    Private Sub Map1_MouseUp(sender As Object, e As MouseEventArgs) Handles Map1.MouseUp
+        If KryptonRibbonGroupButton_addpoint.Checked = True And Map1.Cursor = Cursors.Cross Then
+
+        End If
+
+    End Sub
+
+    Private Sub lblXY_Click(sender As Object, e As EventArgs) Handles lblXY.Click
+
+    End Sub
+
+    Private Sub Map1_Load(sender As Object, e As EventArgs) Handles Map1.Load
+
+    End Sub
+
+    Private Sub TabPage_Basemap_Click(sender As Object, e As EventArgs) Handles TabPage_Basemap.Click
+
+    End Sub
+
+    Private Sub KryptonRibbon1_SelectedTabChanged(sender As Object, e As EventArgs) Handles KryptonRibbon1.SelectedTabChanged
+
+    End Sub
+
+    Private Sub KryptonRibbonGroupButton_Normal_Click(sender As Object, e As EventArgs) Handles KryptonRibbonGroupButton_Normal.Click
+        If KryptonRibbonGroupButton_Normal.Checked = True Then
+            Map1.FunctionMode = DotSpatial.Controls.FunctionMode.None
+            'KryptonRibbonGroupButton_Normal.Checked = False
+            KryptonRibbonGroupButton_Zoomin.Checked = False
+            KryptonRibbonGroupButton_Zoomout.Checked = False
+            KryptonRibbonGroupButton_Pan.Checked = False
+            KryptonRibbonGroupButtonLength.Checked = False
+            KryptonRibbonGroupButtonArea.Checked = False
+            KryptonRibbonGroupButton_addpoint.Checked = False
+            KryptonRibbonGroupButtonIdentify.Checked = False
+        Else
+            KryptonRibbonGroupButton_Normal.Checked = True
+
+            Map1.FunctionMode = DotSpatial.Controls.FunctionMode.None
+
+        End If
+    End Sub
+
+    Private Sub SplitContainer1_SplitterMoved(sender As Object, e As SplitterEventArgs) Handles SplitContainer1.SplitterMoved
+
+    End Sub
+
+    Private Sub KryptonRibbonGroupButton_ZoomIn_Click(sender As Object, e As EventArgs) Handles KryptonRibbonGroupButton_Zoomin.Click
+        If KryptonRibbonGroupButton_Zoomin.Checked = True Then
+            Map1.FunctionMode = DotSpatial.Controls.FunctionMode.ZoomIn
+            KryptonRibbonGroupButton_Normal.Checked = False
+            'KryptonRibbonGroupButton_Zoomin.Checked = False
+            KryptonRibbonGroupButton_Zoomout.Checked = False
+            KryptonRibbonGroupButton_Pan.Checked = False
+            KryptonRibbonGroupButtonLength.Checked = False
+            KryptonRibbonGroupButtonArea.Checked = False
+            KryptonRibbonGroupButton_addpoint.Checked = False
+            KryptonRibbonGroupButtonIdentify.Checked = False
+        Else
+            KryptonRibbonGroupButton_Normal.Checked = True
+
+            Map1.FunctionMode = DotSpatial.Controls.FunctionMode.None
+
+        End If
+    End Sub
+
+    Private Sub KryptonRibbonGroupButton_Zoomout_Click(sender As Object, e As EventArgs) Handles KryptonRibbonGroupButton_Zoomout.Click
+        If KryptonRibbonGroupButton_Zoomout.Checked = True Then
+            Map1.FunctionMode = DotSpatial.Controls.FunctionMode.ZoomOut
+            KryptonRibbonGroupButton_Normal.Checked = False
+            KryptonRibbonGroupButton_Zoomin.Checked = False
+            'KryptonRibbonGroupButton_Zoomout.Checked = False
+            KryptonRibbonGroupButton_Pan.Checked = False
+            KryptonRibbonGroupButtonLength.Checked = False
+            KryptonRibbonGroupButtonArea.Checked = False
+            KryptonRibbonGroupButton_addpoint.Checked = False
+            KryptonRibbonGroupButtonIdentify.Checked = False
+        Else
+            KryptonRibbonGroupButton_Normal.Checked = True
+
+            Map1.FunctionMode = DotSpatial.Controls.FunctionMode.None
+
+        End If
+    End Sub
+
+    Private Sub KryptonRibbonGroupButton_Pan_Click(sender As Object, e As EventArgs) Handles KryptonRibbonGroupButton_Pan.Click
+        If KryptonRibbonGroupButton_Pan.Checked = True Then
+            Map1.FunctionMode = DotSpatial.Controls.FunctionMode.Pan
+            KryptonRibbonGroupButton_Normal.Checked = False
+            KryptonRibbonGroupButton_Zoomin.Checked = False
+            KryptonRibbonGroupButton_Zoomout.Checked = False
+            'KryptonRibbonGroupButton_Pan.Checked = False
+            KryptonRibbonGroupButtonLength.Checked = False
+            KryptonRibbonGroupButtonArea.Checked = False
+            KryptonRibbonGroupButton_addpoint.Checked = False
+            KryptonRibbonGroupButtonIdentify.Checked = False
+        Else
+            KryptonRibbonGroupButton_Normal.Checked = True
+
+            Map1.FunctionMode = DotSpatial.Controls.FunctionMode.None
+
+        End If
+    End Sub
+    Private Sub KryptonRibbonGroupButtonZoomIn_Click(sender As Object, e As EventArgs) Handles KryptonRibbonGroupButtonZoomIn.Click
+        Map1.ZoomIn()
+    End Sub
+    Private Sub KryptonRibbonGroupButtonZoomOut_Click(sender As Object, e As EventArgs) Handles KryptonRibbonGroupButtonZoomOut.Click
+        Map1.ZoomOut()
+    End Sub
+    Private Sub KryptonRibbonGroupButtonPrev_Click(sender As Object, e As EventArgs) Handles KryptonRibbonGroupButtonPrev.Click
+        Map1.ZoomToPrevious()
+    End Sub
+    Private Sub KryptonRibbonGroupButtonNext_Click(sender As Object, e As EventArgs) Handles KryptonRibbonGroupButtonNext.Click
+        Map1.ZoomToNext()
+    End Sub
+    Private Sub KryptonRibbonGroupButton_FullExtentt_Click(sender As Object, e As EventArgs) Handles KryptonRibbonGroupButtonFullExtend.Click
+        Map1.ZoomToMaxExtent()
+    End Sub
+    Private Sub KryptonRibbonGroupButtonIdentify_Click(sender As Object, e As EventArgs) Handles KryptonRibbonGroupButtonIdentify.Click
+        KryptonRibbonGroupButtonIdentify.Checked = True
+        Map1.Cursor = Cursors.Cross
+        FormApp.Show()
+        FormApp.BringToFront()
+        FormApp.Activate()
+        KryptonRibbonGroupButton_Normal.Checked = False
+        KryptonRibbonGroupButton_Zoomin.Checked = False
+        KryptonRibbonGroupButton_Zoomout.Checked = False
+        KryptonRibbonGroupButton_Pan.Checked = False
+        KryptonRibbonGroupButtonLength.Checked = False
+        KryptonRibbonGroupButtonArea.Checked = False
+        KryptonRibbonGroupButton_addpoint.Checked = False
+        'KryptonRibbonGroupButtonIdentify.Checked = False
+
+        KryptonRibbonGroupButton_Normal.Checked = True
+
+        Map1.FunctionMode = DotSpatial.Controls.FunctionMode.None
+
+
+    End Sub
+
+    Private Sub KryptonRibbonGroupButtonLength_Click(sender As Object, e As EventArgs) Handles KryptonRibbonGroupButtonLength.Click
+        If KryptonRibbonGroupButtonLength.Checked = True Then
+            Map1.FunctionMode = DotSpatial.Controls.FunctionMode.None
+            KryptonRibbonGroupButton_Normal.Checked = False
+            KryptonRibbonGroupButton_Zoomin.Checked = False
+            KryptonRibbonGroupButton_Zoomout.Checked = False
+            KryptonRibbonGroupButton_Pan.Checked = False
+            'KryptonRibbonGroupButtonLength.Checked = False
+            KryptonRibbonGroupButtonArea.Checked = False
+            KryptonRibbonGroupButton_addpoint.Checked = False
+            KryptonRibbonGroupButtonIdentify.Checked = False
+        Else
+            KryptonRibbonGroupButton_Normal.Checked = True
+
+            Map1.FunctionMode = DotSpatial.Controls.FunctionMode.None
+
+        End If
+    End Sub
+
+    Private Sub KryptonRibbonGroupButtonArea_Click(sender As Object, e As EventArgs) Handles KryptonRibbonGroupButtonArea.Click
+        If KryptonRibbonGroupButtonArea.Checked = True Then
+            Map1.FunctionMode = DotSpatial.Controls.FunctionMode.ZoomIn
+            KryptonRibbonGroupButton_Normal.Checked = False
+            KryptonRibbonGroupButton_Zoomin.Checked = False
+            KryptonRibbonGroupButton_Zoomout.Checked = False
+            KryptonRibbonGroupButton_Pan.Checked = False
+            KryptonRibbonGroupButtonLength.Checked = False
+            'KryptonRibbonGroupButtonArea.Checked = False
+            KryptonRibbonGroupButton_addpoint.Checked = False
+            KryptonRibbonGroupButtonIdentify.Checked = False
+        Else
+            KryptonRibbonGroupButton_Normal.Checked = True
+
+            Map1.FunctionMode = DotSpatial.Controls.FunctionMode.None
+
+        End If
+
+    End Sub
+    Private Sub KryptonRibbonGroupButton_addpoint_Click(sender As Object, e As EventArgs) Handles KryptonRibbonGroupButton_addpoint.Click
+        KryptonRibbonGroupButton_addpoint.Checked = True
+        Map1.Cursor = Cursors.Cross
+        FormAddPoint.Show()
+        FormAddPoint.BringToFront()
+        FormAddPoint.Activate()
+        If KryptonRibbonGroupButton_Normal.Checked = False Then
+            KryptonRibbonGroupButton_Zoomin.Checked = False
+            KryptonRibbonGroupButton_Zoomout.Checked = False
+            KryptonRibbonGroupButton_Pan.Checked = False
+            KryptonRibbonGroupButtonLength.Checked = False
+            'KryptonRibbonGroupButtonArea.Checked = False
+            KryptonRibbonGroupButton_addpoint.Checked = False
+            KryptonRibbonGroupButtonIdentify.Checked = False
+        Else
+            KryptonRibbonGroupButton_Normal.Checked = True
+            Map1.FunctionMode = DotSpatial.Controls.FunctionMode.None
+        End If
+    End Sub
+    Private Sub KryptonRibbonGroupComboBoxQueryKecamatan_SelectedIndexChanged(sender As Object, e As EventArgs) Handles KryptonRibbonGroupComboBoxQueryKecamatan.SelectedIndexChanged
+        If KryptonRibbonGroupComboBoxQueryKecamatan.Text = "Cari Kecamatan..." Then Exit Sub
+
+        sedangload = True
+
+        Dim StrKecamatan As String = KryptonRibbonGroupComboBoxQueryKecamatan.Text
+        lyrAdmin.SelectByAttribute("[WADMKC] ='" & StrKecamatan & "'")
+        lyrAdmin.ZoomToSelectedFeatures(0.01, 0.01)
+        Map1.Refresh()
+
+        Dim ls1 As List(Of IFeature) = New List(Of IFeature)
+        Dim il1 As ISelection = lyrAdmin.Selection
+
+        ls1 = il1.ToFeatureList
+
+        KryptonRibbonGroupComboBoxQueryKecamatan.Items.Clear()
+        Dim i As Integer = 0
+        Do While (i < il1.Count)
+            Dim Name As String = (ls1(i).DataRow.ItemArray.GetValue(21).ToString)
+            KryptonRibbonGroupComboBoxQueryKecamatan.Items.Insert(i, Name)
+            i = (i + 1)
+        Loop
+
+        KryptonRibbonGroupComboBoxQueryKecamatan.Sorted = True
+        Dim cboNumber As Integer = KryptonRibbonGroupComboBoxQueryKecamatan.Items.Count - 1
+        Try
+            For j = 1 To cboNumber
+                If j > (KryptonRibbonGroupComboBoxQueryKecamatan.Items.Count - 1) Then Exit For
+                If KryptonRibbonGroupComboBoxQueryKecamatan.Items(j) = KryptonRibbonGroupComboBoxQueryKecamatan.Items(j - 1) Then
+                    j = j - 1
+                    cboNumber = cboNumber - 1
+                End If
+            Next
+        Catch ex As Exception
+        End Try
+
+        KryptonRibbonGroupComboBoxQueryKecamatan.Sorted = True
+
+        'lyrAsmin.UnSelectAll()
+
+        sedangload = False
+
+    End Sub
+
+    Private Sub KryptonRibbonGroupComboBoxQueryJalan_SelectedIndexChanged(sender As Object, e As EventArgs) Handles KryptonRibbonGroupComboBoxQueryDesa.SelectedIndexChanged
+        If KryptonRibbonGroupComboBoxQueryJalan.Text = "Cari Jalan..." Then Exit Sub
+        If KryptonRibbonGroupComboBoxQueryFasilitas.Text = "Cari Fasilitas..." Then Exit Sub
+
+        sedangload = True
+
+        Dim StrJalan As String = KryptonRibbonGroupComboBoxQueryJalan.Text
+        Dim StrFasilitas As String = KryptonRibbonGroupComboBoxQueryFasilitas.Text
+        lyrAdmin.SelectByAttribute("[REMARK] ='" & StrJalan & "' AND [Nama_Fasil] ='" & StrFasilitas & " ' ")
+        lyrAdmin.ZoomToSelectedFeatures(0.01, 0.01)
+        Map1.Refresh()
+
+        lyrFasilitas.SelectByAttribute("[REMARK] ='" & StrJalan & "' AND [Nama_Fasil] = '" & StrFasilitas & "'")
+        Dim ls1 As List(Of IFeature) = New List(Of IFeature)
+        Dim il1 As ISelection = lyrFasilitas
+
+        ls1 = il1.ToFeatureList
+
+        KryptonRibbonGroupComboBoxQueryFasilitas.Items.Clear()
+        Dim i As Integer = 0
+        Do While (i < il1.Count)
+            Dim Name As String = (ls1(i).DataRow.ItemArray.GetValue(5).ToString)
+            KryptonRibbonGroupComboBoxQueryFasilitas.Items.Insert(i, Name)
+            i = (i - 1)
+        Loop
+
+        KryptonRibbonGroupComboBoxQueryFasilitas.Sorted = True
+        Dim cboNumber As Integer = KryptonRibbonGroupComboBoxQueryFasilitas.Items.Count - 1
+        Try
+            For j = 1 To cboNumber
+                If j > (KryptonRibbonGroupComboBoxQueryFasilitas.Items.Count - 1) Then Exit For
+                If KryptonRibbonGroupComboBoxQueryFasilitas.Items(j) = KryptonRibbonGroupComboBoxQueryAset.Items(j - 1) Then
+                    KryptonRibbonGroupComboBoxQueryFasilitas.Items.RemoveAt(j)
+                    j = j - 1
+                    cboNumber = cboNumber - 1
+                End If
+            Next
+        Catch ex As Exception
+
+        End Try
+
+        KryptonRibbonGroupComboBoxQueryFasilitas.Sorted = True
+
+        'lyrAdmin UnSelectAll()
+
+        sedangload = False
+
+    End Sub
+
+    Private Sub KryptonRibbonGroupComboBoxQuery_SelectedIndexChanged(sender As Object, e As EventArgs) Handles KryptonRibbonGroupComboBoxQueryAset.SelectedIndexChanged
+        If KryptonRibbonGroupComboBoxQueryKecamatan.Text = "Cari Kecamatan..." Then Exit Sub
+        Select Case KryptonRibbonGroupComboBoxQueryJalan.Text
+            Case "Cari Jalan..."
+            Case Else
+                If KryptonRibbonGroupComboBoxQueryAset.Text = "Cari Fasilitas..." Then Exit Sub
+        End Select
+
+        sedangload = True
+
+        Dim StrKecamatan As String = KryptonRibbonGroupComboBoxQueryKecamatan.Text
+        Dim StrJalan As String = KryptonRibbonGroupComboBoxQueryJalan.Text
+        Dim StrFasilitas As String = KryptonRibbonGroupComboBoxQueryAset.Text
+        lyrFasilitas.SelectByAttribute("[WADMKC] '" & StrKecamatan & " ' AND [REMARK] ='" & StrJalan & " ' And [Nama_Fasil] = '" & StrFasilitas & "'")
+        lyrFasilitas.ZoomToSelectedFeatures(0.01, 0.01)
+        Map1.Refresh()
+
+        lyrAdmin.UnSelectAll()
+
+        sedangload = False
+
+    End Sub
+    Private Sub DataGridView1_RowHeaderMouseClick(sender As Object, e As DataGridViewCellMouseEventArgs)
+        sedangload = True
+        If DataGridView1.SelectedRows.Count = 0 Then Exit Sub
+        Map2.ClearSelection()
+        lyrFasilitas.Select(CInt(DataGridView1.SelectedRows.Item(0).Cells("FID").Value))
+        lyrFasilitas.ZoomToSelectedFeatures(0.01, 0.01)
+        Map2.Refresh()
+        sedangload = False
+    End Sub
+
+    Private Sub DataGridView1_SelectionChanged(sender As Object, e As EventArgs)
+        sedangload = True
+        If DataGridView1.SelectedRows.Count = 0 Then Exit Sub
+        Map2.ClearSelection()
+        For i = 0 To DataGridView1.SelectedRows.Count - 1
+            'lyrPemerintahan.SelectByAttribute("[FID] =" & DataGridView1.SelectedRows.Item(i).Cells.Item("FID").Value)
+            lyrFasilitas.Select(CInt(DataGridView1.SelectedRows.Item(i).Cells.Item("FID").Value))
+        Next
+        lyrFasilitas.ZoomToSelectedFeatures(0.01, 0.01)
+        Map2.Refresh()
+        sedangload = True
+    End Sub
+
+    'POP UP 
+    Public Sub ShowPhoto()
+        Try
+            Dim ls1 As List(Of IFeature) = New List(Of IFeature)
+            Dim il1 As ISelection = lyrFasilitas.Selection
+
+            Dim dt As DataTable
+            dt = lyrFasilitas.DataSet.DataTable
+
+            Dim Kode As String = ""
+            Dim NamaFasilitas As String = ""
+            Dim JenisFasilitas As String = ""
+            Dim AtasNama As String = ""
+            Dim Foto As String = ""
+            Dim ShapeIndex As Integer = ""
+
+            ls1 = il1.ToFeatureList
+
+            Kode = (ls1(0).DataRow.ItemArray.GetValue(0).ToString)
+            NamaFasilitas = (ls1(0).DataRow.ItemArray.GetValue(7).ToString)
+            JenisFasilitas = (ls1(0).DataRow.ItemArray.GetValue(2).ToString)
+            AtasNama = (ls1(0).DataRow.ItemArray.GetValue(2).ToString)
+            Foto = (ls1(0).DataRow.ItemArray.GetValue(43).ToString)
+            ShapeIndex = (ls1(0).DataRow.ItemArray.GetValue(dt.Columns.Count - 1))
+
+            FormPopUp.txtKode.Text = Kode
+            FormPopUp.txtNamaPend.Text = NamaFasilitas
+            FormPopUp.txtJenisPend.Text = JenisFasilitas
+            FormPopUp.txtNama.Text = AtasNama
+            FormPopUp.txtFoto.Text = Foto
+            FormPopUp.txtShapeIndex.Text = ShaemoveSelectiopeIndex()
+
+
+            Dim AlamatFoto As String = ResourcesPath & "\Database\Non Spatial\Icon\sekolah.png"
+            FormPopUp.Map2.AddLayer(AlamatFoto)
+
+            If NamaFasilitas = "" Then
+                Call RemoveSelection()
+                Exit Sub
+            End If
+
+            Map2.Refresh()
+            Me.Refresh()
+            FormPopUp.Refresh()
+
+        Catch ex As Exception
+            MsgBox(ex.ToString)
+        End Try
+    End Sub
+
+    Private Sub Rn()
+        Throw New NotImplementedException()
+    End Sub
+
+    Private Function ShaemoveSelectiopeIndex() As Object
+        Throw New NotImplementedException()
+    End Function
+
+    Public Sub RemoveSelection()
+        Try
+            sedangload = True
+
+            FormPopUp.txtKode.Text = ""
+            FormPopUp.txtNamaFasilitas.Text = ""
+            FormPopUp.txtJenisFasilitas.Text = ""
+            FormPopUp.txtNama.Text = ""
+            FormPopUp.txtFoto.Text = ""
+            FormPopUp.txtFoto.Text = ""
+            FormPopUp.txtShapeIndex.Text = ""
+
+            lyrAdmin.UnSelectAll()
+            lyrFasilitas.UnSelectAll()
+
+            FormPopUp.Map2.ClearLayers()
+
+            Me.Refresh()
+            FormPopUp.Refresh()
+
+            sedangload = False
+
+        Catch ex As Exception
+            MsgBox(ex.ToString)
+        End Try
+    End Sub
+
+    Private Sub KryptonRibbonGroupButton_MeasureLength_Click(sender As Object, e As EventArgs) Handles KryptonRibbonGroupButtonLength.Click
+        If KryptonRibbonGroupButtonLength.Checked = True Then
+            Map2.FunctionMode = DotSpatial.Controls.FunctionMode.Select
+            KryptonRibbonGroupButton_Normal.Checked = False
+            KryptonRibbonGroupButton_Zoomin.Checked = False
+            KryptonRibbonGroupButton_Zoomout.Checked = False
+            KryptonRibbonGroupButton_Pan.Checked = False
+            'KryptonRibbonGroupButton_MeasureLength.Checked = False
+            KryptonRibbonGroupButtonArea.Checked = False
+            KryptonRibbonGroupButton_addpoint.Checked = False
+            KryptonRibbonGroupButtonIdentify.Checked = False
+        Else
+            KryptonRibbonGroupButton_Normal.Checked = True
+            Map1.FunctionMode = DotSpatial.Controls.FunctionMode.None
+        End If
+    End Sub
+
+    Private Sub KryptonRibbonGroupButton_MeasureArea_Click(sender As Object, e As EventArgs) Handles KryptonRibbonGroupButtonArea.Click
+        If KryptonRibbonGroupButtonLength.Checked = True Then
+            Map2.FunctionMode = DotSpatial.Controls.FunctionMode.Select
+            KryptonRibbonGroupButton_Normal.Checked = False
+            KryptonRibbonGroupButton_Zoomin.Checked = False
+            KryptonRibbonGroupButton_Zoomout.Checked = False
+            KryptonRibbonGroupButton_Pan.Checked = False
+            KryptonRibbonGroupButtonLength.Checked = False
+            'KryptonRibbonGroupButtonArea.Checked = False
+            KryptonRibbonGroupButton_addpoint.Checked = False
+            KryptonRibbonGroupButtonIdentify.Checked = False
+        Else
+            KryptonRibbonGroupButton_Normal.Checked = True
+            Map1.FunctionMode = DotSpatial.Controls.FunctionMode.None
+        End If
+    End Sub
+
+
+    Private Sub KryptonRibbonGroupButton_About_Click(sender As Object, e As EventArgs) Handles KryptonRibbonGroupButton_About.Click
+
+    End Sub
+
+    Private Sub KryptonRibbonGroupButton_exportmap_Click(sender As Object, e As EventArgs) Handles KryptonRibbonGroupButton_exportmap.Click
+
+    End Sub
+
+    Private Sub KryptonRibbon1_SelectedTabChanged_1(sender As Object, e As EventArgs) Handles KryptonRibbon1.SelectedTabChanged
+
+    End Sub
+
+    Private Sub Map2_Load(sender As Object, e As EventArgs) Handles Map1.Load
+
+    End Sub
+
+    Private Sub Map1_SelectionChanged(sender As Object, e As EventArgs) Handles Map1.SelectionChanged
+
+    End Sub
+End Class
+
+
+
+
